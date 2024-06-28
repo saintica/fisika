@@ -14,30 +14,63 @@ pygame.display.set_caption("Spring-Mass System with Sinusoidal Chart")
 # Set up GUI manager
 manager = pygame_gui.UIManager((width, height))
 
-# Add sliders for mass and spring constant
+# Add sliders for mass, spring constant, and damping
+slider_width = 200
+slider_height = 30
+slider_margin = 10
+
 mass_slider = pygame_gui.elements.UIHorizontalSlider(
-    relative_rect=pygame.Rect((50, height - 100), (200, 30)),
+    relative_rect=pygame.Rect((width - slider_width - slider_margin, height - 200), (slider_width, slider_height)),
     start_value=1.0,
     value_range=(0.1, 10.0),
     manager=manager
 )
 
+mass_label = pygame_gui.elements.UILabel(
+    relative_rect=pygame.Rect((width - slider_width - slider_margin, height - 230), (slider_width, slider_height)),
+    text=f'Mass: {mass_slider.get_current_value():.2f}',
+    manager=manager
+)
+
 k_slider = pygame_gui.elements.UIHorizontalSlider(
-    relative_rect=pygame.Rect((300, height - 100), (200, 30)),
+    relative_rect=pygame.Rect((width - slider_width - slider_margin, height - 150), (slider_width, slider_height)),
     start_value=0.1,
     value_range=(0.01, 1.0),
     manager=manager
 )
 
+k_label = pygame_gui.elements.UILabel(
+    relative_rect=pygame.Rect((width - slider_width - slider_margin, height - 180), (slider_width, slider_height)),
+    text=f'Spring Constant: {k_slider.get_current_value():.2f}',
+    manager=manager
+)
+
+damping_slider = pygame_gui.elements.UIHorizontalSlider(
+    relative_rect=pygame.Rect((width - slider_width - slider_margin, height - 100), (slider_width, slider_height)),
+    start_value=0.01,
+    value_range=(0.001, 0.1),
+    manager=manager
+)
+
+damping_label = pygame_gui.elements.UILabel(
+    relative_rect=pygame.Rect((width - slider_width - slider_margin, height - 130), (slider_width, slider_height)),
+    text=f'Damping Ratio: {damping_slider.get_current_value():.3f}',
+    manager=manager
+)
+
 # Add buttons to start and restart the animation
+button_width = 100
+button_height = 30
+button_margin = 20
+
 start_button = pygame_gui.elements.UIButton(
-    relative_rect=pygame.Rect((550, height - 100), (100, 30)),
+    relative_rect=pygame.Rect((button_margin, height - 100), (button_width, button_height)),
     text='Start',
     manager=manager
 )
 
 restart_button = pygame_gui.elements.UIButton(
-    relative_rect=pygame.Rect((700, height - 100), (100, 30)),
+    relative_rect=pygame.Rect((button_margin + button_width + button_margin, height - 100), (button_width, button_height)),
     text='Restart',
     manager=manager
 )
@@ -90,8 +123,13 @@ while running:
         if event.type == pygame_gui.UI_HORIZONTAL_SLIDER_MOVED:
             if event.ui_element == mass_slider:
                 mass = mass_slider.get_current_value()
+                mass_label.set_text(f'Mass: {mass:.2f}')
             elif event.ui_element == k_slider:
                 k = k_slider.get_current_value()
+                k_label.set_text(f'Spring Constant: {k:.2f}')
+            elif event.ui_element == damping_slider:
+                damping = damping_slider.get_current_value()
+                damping_label.set_text(f'Damping Ratio: {damping:.3f}')
         if event.type == pygame_gui.UI_BUTTON_PRESSED:
             if event.ui_element == start_button:
                 animation_running = True
@@ -185,15 +223,15 @@ while running:
     for i in range(1, len(data_points)):
         pygame.draw.line(
             window, blue,
-            (chart_top_left[0] + i - 1, chart_top_left[1] + chart_height // 2 - int(data_points[i - 1])),
-            (chart_top_left[0] + i, chart_top_left[1] + chart_height // 2 - int(data_points[i])),
+            (chart_top_left[0] + i - 1, chart_top_left[1] + chart_height // 2 + int(data_points[i - 1])),
+            (chart_top_left[0] + i, chart_top_left[1] + chart_height // 2 +int(data_points[i])),
             2
         )
 
     # Draw dashed line connecting mass to chart
     if len(data_points) > 0:
         line_start = mass_pos
-        line_end = (chart_top_left[0], chart_top_left[1] + chart_height // 2 - int(data_points[0]))
+        line_end = (chart_top_left[0], chart_top_left[1] + chart_height // 2 + int(data_points[0]))
         num_dashes = 20
         for i in range(num_dashes):
             start_x = line_start[0] + (line_end[0] - line_start[0]) * i / num_dashes
