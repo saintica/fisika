@@ -1,112 +1,125 @@
-from manim import *
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from matplotlib.widgets import Slider
 
-class ProjectileMotion(Scene):
-    def construct(self):
-        # Setup the axes
-        axes = Axes(
-            x_range=[0, 280, 20], y_range=[0, 80, 10],
-            axis_config={"include_numbers": True}
-        )#.shift(UP * 1)
+# Define initial parameters
+initial_v0 = 40
+initial_theta0 = 1.09
+initial_sx0 = -0.35
+initial_sy0 = 10
+initial_g = 10
+interv = 2
 
-        x_label = axes.get_x_axis_label(r"x \, \text{(m)}")
-        y_label = axes.get_y_axis_label(r"y \, \text{(m)}")
+# Define the position functions
+def sx(t, sx0, v0, theta0):
+    return sx0 + v0 * np.cos(theta0) * t
 
-        # Initial conditions
-        v0 = 50  # initial velocity
-        angle = PI / 4  # launch angle (45 degrees)
-        g = 9.8  # gravity
+def sy(t, sy0, v0, theta0, g):
+    return sy0 + v0 * np.sin(theta0) * t - 0.5 * g * t**2
 
-        # Display initial conditions
-        initial_conditions = VGroup(
-            Text(f"Initial velocity (v0): {v0} m/s").scale(0.7),
-            Text(f"Launch angle: {int(np.degrees(angle))} degrees").scale(0.7),
-            Text(f"Gravity (g): {g} m/s²").scale(0.7)
-        ).arrange(DOWN, aligned_edge=RIGHT).to_corner(UR)
+# Define the velocity functions
+def vx(v0, theta0):
+    return v0 * np.cos(theta0)
 
-        # Parametric equations for the projectile motion
-        def projectile_pos(t):
-            return np.array([
-                v0 * np.cos(angle) * t,
-                v0 * np.sin(angle) * t - 0.5 * g * t**2,
-                0
-            ])
+def vy(t, v0, theta0, g):
+    return v0 * np.sin(theta0) - g * t
 
-        # Velocity vector function
-        def velocity(t):
-            return np.array([
-                v0 * np.cos(angle),
-                v0 * np.sin(angle) - g * t,
-                0
-            ])
+# Determine the time of flight t1
+def calc_t1(sy0, v0, theta0, g):
+    discriminant = (v0 * np.sin(theta0))**2 - 4 * (-0.5 * g) * sy0
+    return (-v0 * np.sin(theta0) - np.sqrt(discriminant)) / (2 * (-0.5 * g))
 
-        # Acceleration vector (constant)
-        acceleration = np.array([0, -g, 0])
+# Create the plot
+fig, ax = plt.subplots()
+plt.subplots_adjust(left=0.25, bottom=0.4)
+line, = ax.plot([], [], 'b-', label='Trajectory')
+point, = ax.plot([], [], 'ro')
+velocity_vector = ax.quiver([], [], [], [], angles='xy', scale_units='xy', scale=1, color='g', label='Velocity')
+time_template = 'Time = %.2fs'
+time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes)
+sx0_line = ax.axvline(x=initial_sx0, color='r', linestyle='--', label='$s_{x0}$')
+sy0_line = ax.axhline(y=initial_sy0, color='r', linestyle='--', label='$s_{y0}$')
 
-        # Trajectory of the projectile
-        trajectory = axes.plot_parametric_curve(
-            lambda t: projectile_pos(t),
-            t_range=[0, (2 * v0 * np.sin(angle)) / g],  # time of flight
-            color=BLUE
-        )
+# Set plot limits
+ax.set_xlim(-10, 50)
+ax.set_ylim(0, 50)
+ax.set_xlabel('x')
+ax.set_ylabel('y')
+ax.legend()
 
-        # Moving dot for the projectile
-        dot = Dot().move_to(axes.coords_to_point(*projectile_pos(0)))
+# Initialization function for the animation
+def init():
+    line.set_data([], [])
+    point.set_data([], [])
+    time_text.set_text('')
+    velocity_vector.set_UVC([], [])
+    return line, point, velocity_vector, time_text, sx0_line, sy0_line
 
-        # Time tracker
-        time_tracker = ValueTracker(0)
+# Animation function
+def animate(i, t, sx0, sy0, v0, theta0, g):
+    x = sx(t, sx0, v0, theta0)
+    y = sy(t, sy0, v0, theta0, g)
+    line.set_data(x[:i], y[:i])
+    point.set_data([x[i]], [y[i]])
+    vx_i = vx(v0, theta0)
+    vy_i = vy(t[i], v0, theta0, g)
+    velocity_vector.set_offsets([[x[i], y[i]]])
+    velocity_vector.set_UVC([vx_i], [vy_i])
+    time_text.set_text(time_template % (i * t1 / len(t)))
+    sx0_line.set_xdata([sx0])
+    sy0_line.set_ydata([sy0])
+    return line, point, velocity_vector, time_text, sx0_line, sy0_line
 
-        # Velocity and acceleration vectors
-        velocity_vector = always_redraw(
-            lambda: Arrow(
-                dot.get_center(),
-                dot.get_center() + velocity(time_tracker.get_value()) / 10,
-                buff=0,
-                color=GREEN
-            )
-        )
+# Slider update function
+def update(val):
+    global t1, t, ani
+    v0 = v0_slider.val
+    theta0 = theta0_slider.val
+    sx0 = sx0_slider.val
+    sy0 = sy0_slider.val
+    g = g_slider.val
+    t1 = calc_t1(sy0, v0, theta0, g)
+    t = np.linspace(0, t1, num=500)
+    x = sx(t, sx0, v0, theta0)
+    y = sy(t, sy0, v0, theta0, g)
+    ax.set_xlim(np.min(x) - 10, np.max(x) + 10)
+    ax.set_ylim(0, np.max(y) + 10)
+    sx0_line.set_xdata([sx0])
+    sy0_line.set_ydata([sy0])
+    ani.event_source.stop()
+    ani = animation.FuncAnimation(fig, animate, frames=len(t), interval=interv,
+                                  init_func=init, fargs=(t, sx0, sy0, v0, theta0, g), blit=True)
+    ani.event_source.start()
 
-        acceleration_vector = always_redraw(
-            lambda: Arrow(
-                dot.get_center(),
-                dot.get_center() + acceleration / 10,
-                buff=0,
-                color=RED
-            )
-        )
+# Create sliders
+axcolor = 'lightgoldenrodyellow'
+ax_v0 = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
+ax_theta0 = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor=axcolor)
+ax_sx0 = plt.axes([0.25, 0.2, 0.65, 0.03], facecolor=axcolor)
+ax_sy0 = plt.axes([0.25, 0.25, 0.65, 0.03], facecolor=axcolor)
+ax_g = plt.axes([0.25, 0.3, 0.65, 0.03], facecolor=axcolor)
 
-        # Velocity and acceleration labels
-        velocity_label = always_redraw(
-            lambda: MathTex(
-                f"\\vec{{v}} = \\begin{{bmatrix}} {velocity(time_tracker.get_value())[0]:.2f} \\\\ {velocity(time_tracker.get_value())[1]:.2f} \\end{{bmatrix}}",
-                color=GREEN
-            ).next_to(velocity_vector, RIGHT)
-        )
+v0_slider = Slider(ax_v0, 'v0', 1, 100, valinit=initial_v0)
+theta0_slider = Slider(ax_theta0, 'theta0', 0, np.pi/2, valinit=initial_theta0)
+sx0_slider = Slider(ax_sx0, 'sx0', -10, 10, valinit=initial_sx0)
+sy0_slider = Slider(ax_sy0, 'sy0', 0, 50, valinit=initial_sy0)
+g_slider = Slider(ax_g, 'g', 1, 20, valinit=initial_g)
 
-        acceleration_label = always_redraw(
-            lambda: MathTex(
-                f"\\vec{{a}} = \\begin{{bmatrix}} {acceleration[0]} \\\\ {acceleration[1]} \\end{{bmatrix}}",
-                color=RED
-            ).next_to(acceleration_vector, RIGHT)
-        )
+v0_slider.on_changed(update)
+theta0_slider.on_changed(update)
+sx0_slider.on_changed(update)
+sy0_slider.on_changed(update)
+g_slider.on_changed(update)
 
-        def update_dot(dot):
-            t = time_tracker.get_value()
-            new_pos = projectile_pos(t)
-            dot.move_to(axes.coords_to_point(new_pos[0], new_pos[1]))
-            return dot
+# Initial calculation and animation
+t1 = calc_t1(initial_sy0, initial_v0, initial_theta0, initial_g)
+t = np.linspace(0, t1, num=500)
+x = sx(t, initial_sx0, initial_v0, initial_theta0)
+y = sy(t, initial_sy0, initial_v0, initial_theta0, initial_g)
+ax.set_xlim(np.min(x) - 10, np.max(x) + 10)
+ax.set_ylim(0, np.max(y) + 10)
+ani = animation.FuncAnimation(fig, animate, frames=len(t), interval=interv,
+                              init_func=init, fargs=(t, initial_sx0, initial_sy0, initial_v0, initial_theta0, initial_g), blit=True)
 
-        dot.add_updater(update_dot)
-
-        # Add elements to the scene
-        self.play(Create(axes), Write(x_label), Write(y_label))
-        self.play(Write(initial_conditions))
-        self.play(Create(trajectory), Create(dot))
-        self.add(velocity_vector, acceleration_vector, velocity_label, acceleration_label)
-
-        # Animate the projectile motion
-        self.play(time_tracker.animate.set_value((2 * v0 * np.sin(angle)) / g), run_time=10, rate_func=linear)
-        self.wait(2)
-
-# To run the scene, use the following command in the terminal:
-# manim -pql projectile_motion.py ProjectileMotion
+plt.show()
