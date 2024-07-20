@@ -35,7 +35,6 @@ fig, ax = plt.subplots()
 plt.subplots_adjust(left=0.25, bottom=0.4)
 line, = ax.plot([], [], 'b-', label='Trajectory')
 point, = ax.plot([], [], 'ro')
-velocity_vector = ax.quiver([], [], [], [], angles='xy', scale_units='xy', scale=1, color='b', label='v')
 time_template = 'Time = %.2fs'
 time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes)
 sx0_line = ax.axvline(x=initial_sx0,lw=1, color='k', linestyle='--', label='$s_{x0}$')
@@ -55,10 +54,9 @@ def init():
     line.set_data([], [])
     point.set_data([], [])
     time_text.set_text('')
-    velocity_vector.set_UVC([], [])
     x_projection.set_data([], [])
     y_projection.set_data([], [])
-    return line, point, x_projection, y_projection, velocity_vector, time_text, sx0_line, sy0_line
+    return line, point, x_projection, y_projection, time_text, sx0_line, sy0_line
 
 # Animation function
 def animate(i, t, sx0, sy0, v0, theta0, g):
@@ -70,12 +68,14 @@ def animate(i, t, sx0, sy0, v0, theta0, g):
     y_projection.set_data([x[i], x[i]], [sy0, y[i]])
     vx_i = vx(v0, theta0)
     vy_i = vy(t[i], v0, theta0, g)
-    velocity_vector.set_offsets([[x[i], y[i]]])
-    velocity_vector.set_UVC([vx_i], [vy_i])
     time_text.set_text(time_template % (i * t1 / len(t)))
     sx0_line.set_xdata([sx0])
     sy0_line.set_ydata([sy0])
-    return line, point, x_projection, y_projection, velocity_vector, time_text, sx0_line, sy0_line
+    v = ax.quiver(x[i], y[i], vx_i, vy_i, angles='xy', scale_units='xy', scale=1, color='b', label='v')
+    vxi = ax.quiver(x[i], y[i], vx_i, 0, angles='xy', scale_units='xy', scale=1, color='r', label='v')
+    vyi = ax.quiver(x[i], y[i], 0, vy_i, angles='xy', scale_units='xy', scale=1, color='g', label='v')
+    
+    return line, point, v, vxi, vyi, x_projection, y_projection, time_text, sx0_line, sy0_line
 
 # Slider update function
 def update(val):
