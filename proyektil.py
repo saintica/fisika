@@ -50,7 +50,7 @@ def init():
 # Animation function which updates figure data
 def animate(i):
     line.set_data(x[:i], y[:i])
-    point.set_data(x[i], y[i])
+    point.set_data([x[i]], [y[i]])
     x_projection.set_data([0, x[i]], [y[i], y[i]])
     y_projection.set_data([x[i], x[i]], [0, y[i]])
     velocity_vector.set_offsets([x[i], y[i]])
